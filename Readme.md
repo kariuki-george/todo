@@ -2,32 +2,28 @@
 
 The todo list minimal feature set includes:
 
-Add, remove, edit todos
-Mark todos as "done"
-Save and load todos
+- Add, remove, edit todos
+- Mark todos as "done"
+- Save and load todos
 
 ## Key features
 
-- Has a plug configurable storage backend
+- Has a configurable storage backend
+
   1. Full pledged db with with rusqlite - coming soon
   2. In memory hashmap that saves and loads from the fs
-- Has two distint user interfaces
+
+- Has two distinct user interfaces\*
   1. A command line interface
   2. A web version using axum - coming soon
-
-## Limitations
-
-- Saving the in-memory hashmap will run only on exit command. So incase of -
-  premature exit [CTRL+C], new mutations will be lost.
-- If the data flushed in the file from the hashmap is tampered with, there is risk of data loss.
 
 ## Architecture
 
 - Todo-logic
 
   - Contains all structs, enums describing the todos
-  - Contains todo methods (add, remove, etc) trait that datastore(hashmap, rustqlite) should implement.
-  - Contains trait implementation for extra functionality
+  - Contains todo methods (add, remove, etc) trait that datastores(hashmap, rustqlite) should implement.
+  - Contains traits implementation for extra functionality
 
 - Store-hashmap
 
@@ -39,3 +35,9 @@ Save and load todos
   - Contains the cmd user interface
   - Utilizes the hashmap to store todos.
   - The application is interactive by use of an infinite loop.
+
+## Limitations
+
+- Saving the in-memory hashmap will run only on exit command. So incase of -
+  premature exit [CTRL+C], new mutations will be lost.
+- If the data flushed in the file from the hashmap is tampered with, there is risk of data loss.
