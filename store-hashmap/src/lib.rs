@@ -1,16 +1,27 @@
 use std::collections::HashMap;
 
+use std::fs;
+use std::io::Error;
+use std::io::Read;
+use std::io::Write;
+use std::path;
 use todo_logic::{Todo, TodoStatus, TodoStore, UpdateTodo};
+
+const FILE_NAME: &str = "store-hash.json";
 
 #[derive(Debug)]
 pub enum StoreHashmapError {
     CounterError,
     NotFound,
+    FileError,
+    SerializationError,
+    IoError(Error),
+    DeserializationError,
 }
 
 #[derive(Debug)]
 pub struct StoreHashmap {
-    pub store: HashMap<u8, Todo>,
+    store: HashMap<u8, Todo>,
     counter: u8, // Note this hashmap will hold upto 255 todos. 255 because 0 will be used
 }
 
@@ -21,11 +32,60 @@ impl StoreHashmap {
             counter: 0,
         }
     }
-    fn load() -> StoreHashmap {
-        todo!()
+    fn load() -> Result<StoreHashmap, StoreHashmapError> {
+        let path = path::Path::new(FILE_NAME);
+        let mut file = fs::OpenOptions::new()
+            .read(true)
+            .open(path)
+            .map_err(StoreHashmapError::IoError)?;
+
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes)
+            .map_err(StoreHashmapError::IoError)?;
+
+        let serialized_string = String::from_utf8(bytes.clone())
+            .map_err(|_| StoreHashmapError::DeserializationError)?;
+
+        let values = serde_json::from_str::<Vec<Todo>>(serialized_string.as_str())
+            .map_err(|_| StoreHashmapError::DeserializationError)?;
+
+        let counter: u8 = values.iter().fold(1, |max: u8, elem| {
+            if elem.id >= max {
+                return elem.id;
+            }
+            max
+        });
+
+        let mut hashmap = HashMap::new();
+
+        for todo in values {
+            hashmap.insert(todo.id, todo);
+        }
+
+        Ok(StoreHashmap {
+            store: hashmap.to_owned(),
+            counter,
+        })
     }
-    fn save() -> StoreHashmap {
-        todo!()
+
+    // Flushes the values as bytes into a file
+
+    pub fn save(&self) -> Result<bool, StoreHashmapError> {
+        let values = self.get_all();
+
+        let json = serde_json::to_string_pretty(&values)
+            .map_err(|_| StoreHashmapError::SerializationError)?;
+        let path = path::Path::new(FILE_NAME);
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(path)
+            .map_err(StoreHashmapError::IoError)?;
+
+        file.write(json.as_bytes())
+            .map_err(StoreHashmapError::IoError)?;
+        Ok(true)
     }
     fn get_counter(&mut self) -> Result<u8, StoreHashmapError> {
         if self.counter == u8::MAX {
@@ -34,6 +94,17 @@ impl StoreHashmap {
 
         self.counter += 1;
         Ok(self.counter)
+    }
+}
+
+impl Default for StoreHashmap {
+    // Todo: Perform load else new
+    fn default() -> Self {
+        let store = Self::load();
+        match store {
+            Err(_) => Self::new(),
+            Ok(store) => store,
+        }
     }
 }
 
@@ -94,6 +165,7 @@ mod store_hashmap {
     #[test]
     fn insert() {
         let mut hash_store = StoreHashmap::new();
+
         let todo = hash_store.add("name".to_string()).unwrap();
         assert_eq!(todo.id, 1);
         let todo = hash_store.add("name".to_string()).unwrap();
