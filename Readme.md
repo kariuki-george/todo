@@ -10,8 +10,7 @@ The todo list minimal feature set includes:
 
 - Has a configurable storage backend
 
-  1. Full pledged db with with rusqlite - coming soon
-  2. In memory hashmap that saves and loads from the fs
+  1. In memory hashmap that saves and loads from the fs
 
 - Has two distinct user interfaces\*
   1. A command line interface

@@ -1,13 +1,9 @@
+use home::home_dir;
 use std::collections::HashMap;
-
 use std::fs;
-use std::io::Error;
-use std::io::Read;
-use std::io::Write;
-use std::path;
+use std::io::{self, Error, Read, Write};
+use std::path::Path;
 use todo_logic::{Todo, TodoStatus, TodoStore, UpdateTodo};
-
-const FILE_NAME: &str = "store-hash.json";
 
 #[derive(Debug)]
 pub enum StoreHashmapError {
@@ -22,7 +18,7 @@ pub enum StoreHashmapError {
 #[derive(Debug)]
 pub struct StoreHashmap {
     store: HashMap<u8, Todo>,
-    counter: u8, // Note this hashmap will hold upto 255 todos. 255 because 0 will be used
+    counter: u8, // Note this hashmap will hold upto 255 todos. 255 because 0 will not be used
 }
 
 impl StoreHashmap {
@@ -33,7 +29,8 @@ impl StoreHashmap {
         }
     }
     fn load() -> Result<StoreHashmap, StoreHashmapError> {
-        let path = path::Path::new(FILE_NAME);
+        let path = get_path();
+
         let mut file = fs::OpenOptions::new()
             .read(true)
             .open(path)
@@ -75,7 +72,8 @@ impl StoreHashmap {
 
         let json = serde_json::to_string_pretty(&values)
             .map_err(|_| StoreHashmapError::SerializationError)?;
-        let path = path::Path::new(FILE_NAME);
+        let path = get_path();
+        create_directories(path.clone()).map_err(StoreHashmapError::IoError)?;
         let mut file = fs::OpenOptions::new()
             .write(true)
             .create(true)
@@ -225,4 +223,26 @@ mod store_hashmap {
             Some(todo) => assert_eq!(todo.name, "wowow".to_string()),
         }
     }
+}
+
+fn get_path() -> String {
+    let home_path = match home_dir() {
+        Some(path) => String::from(
+            path.join(".local")
+                .join("share")
+                .join("todo")
+                .join("store-hash.json")
+                .to_string_lossy(),
+        ),
+        _ => String::from("tmp/todo/store-hash.json"),
+    };
+
+    home_path
+}
+fn create_directories(path: String) -> io::Result<()> {
+    let path = Path::new(&path);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    Ok(())
 }

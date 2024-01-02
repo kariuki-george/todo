@@ -3,5 +3,5 @@
 members = [
     "todo-logic",
     "store-hashmap",
-    "todo-cmd"
+    "todo-cmd",
 ]
